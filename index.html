@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Янтарный край: путеводитель по Калининградской области</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  :root {
+    --sea: #1f4e6b;
+    --amber: #c9891c;
+    --amber-light: #f6e7c4;
+    --sand: #faf6ee;
+    --text: #2a2a2a;
+    --muted: #6b6b6b;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+  body {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--text);
+    background: var(--sand);
+    line-height: 1.7;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 1000;
+    background: var(--sea); color: #fff;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    padding: 0.6rem 1.2rem;
+  }
+  header.top .logo { font-weight: bold; font-size: 1.05rem; }
+  header.top nav a {
+    color: #fff; text-decoration: none; margin-left: 1rem; font-size: 0.95rem; opacity: 0.9;
+  }
+  header.top nav a:hover { opacity: 1; text-decoration: underline; }
+
+  .hero {
+    background: linear-gradient(rgba(31,78,107,0.75), rgba(31,78,107,0.85)),
+                url("photo_0.jpg") center/cover no-repeat, var(--sea);
+    color: #fff; text-align: center;
+    padding: 5rem 1.5rem 4rem;
+  }
+  .hero h1 { font-size: 2.6rem; margin: 0 0 0.5rem; letter-spacing: 0.02em; }
+  .hero p { font-size: 1.15rem; max-width: 720px; margin: 0.5rem auto; opacity: 0.95; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 0 1.2rem 3rem; }
+  section { padding: 2.5rem 0; border-bottom: 1px solid #e5dccb; }
+  section:last-of-type { border-bottom: none; }
+  h2 { color: var(--sea); font-size: 1.9rem; margin-top: 0; }
+  h3 { color: var(--amber); margin-bottom: 0.3rem; }
+
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1rem; margin: 1.5rem 0;
+  }
+  .fact {
+    background: var(--card); border-left: 4px solid var(--amber);
+    padding: 0.9rem 1rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .fact strong { display: block; font-size: 1.4rem; color: var(--sea); }
+  .fact span { font-size: 0.9rem; color: var(--muted); }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+
+  .people { list-style: none; padding: 0; }
+  .people li { padding: 0.5rem 0; border-bottom: 1px dotted #d8cdb5; }
+
+  /* ---------- MAP ---------- */
+  #route-map {
+    height: 520px; width: 100%; border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12); margin: 1rem 0 1.5rem;
+  }
+  .route-layout { display: grid; grid-template-columns: 300px 1fr; gap: 1.2rem; }
+  @media (max-width: 860px) { .route-layout { grid-template-columns: 1fr; } }
+  .stop-list { list-style: none; padding: 0; margin: 0; max-height: 520px; overflow-y: auto; }
+  .stop-list li {
+    background: var(--card); margin-bottom: 0.5rem; border-radius: 6px;
+    border: 1px solid #eadfc8; cursor: pointer; transition: background 0.15s;
+  }
+  .stop-list li:hover, .stop-list li.active { background: var(--amber-light); }
+  .stop-list .num {
+    display: inline-block; width: 26px; height: 26px; line-height: 26px; text-align: center;
+    border-radius: 50%; background: var(--amber); color: #fff; font-weight: bold;
+    font-size: 0.85rem; margin: 0.6rem 0.5rem 0.6rem 0.7rem; vertical-align: middle;
+  }
+  .stop-list .name { font-weight: bold; color: var(--sea); vertical-align: middle; }
+  .stop-list .sub { font-size: 0.85rem; color: var(--muted); padding: 0 0.8rem 0.6rem 2.9rem; display: block; }
+
+  .stop-detail { scroll-margin-top: 80px; }
+  .stop-card {
+    background: var(--card); border-radius: 10px; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 2rem;
+    display: grid; grid-template-columns: 340px 1fr;
+  }
+  @media (max-width: 760px) { .stop-card { grid-template-columns: 1fr; } }
+  .stop-card .photo { background: #e8e1d2; min-height: 220px; }
+  .stop-card .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .stop-card .body { padding: 1.3rem 1.5rem; }
+  .stop-card .body .meta { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.4rem; }
+  .stop-card h3 { font-size: 1.35rem; color: var(--sea); margin: 0 0 0.4rem; }
+  .stop-card p { margin: 0.5rem 0; }
+
+  .routes-note {
+    background: var(--amber-light); padding: 1rem 1.2rem; border-radius: 8px; margin-bottom: 1.2rem;
+  }
+
+  /* Leaflet popup tweaks */
+  .leaflet-popup-content { width: 240px !important; font-family: Georgia, serif; }
+  .popup-title { font-weight: bold; color: var(--sea); font-size: 1rem; margin-bottom: 0.3rem; }
+  .popup-img { width: 100%; height: 130px; object-fit: cover; border-radius: 4px; margin-bottom: 0.4rem; background: #eee; }
+  .popup-link { color: var(--amber); font-size: 0.9rem; }
+
+  footer {
+    background: var(--sea); color: #fff; text-align: center;
+    padding: 1.5rem; font-size: 0.9rem; opacity: 0.95;
+  }
+  footer a { color: var(--amber-light); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="logo">Янтарный край</div>
+  <nav>
+    <a href="#geo">География</a>
+    <a href="#economy">Экономика</a>
+    <a href="#culture">Культура</a>
+    <a href="#people">Люди</a>
+    <a href="#route">Маршрут</a>
+    <a href="#links">Ссылки</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <h1>Янтарный край</h1>
+  <p>Путеводитель по Калининградской области: самой западной части России, где встречаются балтийский берег, древние немецкие города и тихие сосновые леса.</p>
+</div>
+
+<main>
+
+  <!-- ===================== ГЕОГРАФИЯ ===================== -->
+  <section id="geo">
+    <h2>География</h2>
+    <p>Калининградская область — самый западный субъект Российской Федерации. Она отделена от основной территории страны Литвой, Польшей и Белоруссией, поэтому её часто называют российским «анклавом». Территория расположена на берегах Балтийского моря и Вислинского и Куршского заливов, а на юго-востоке граничит с Польшей и Литвой.</p>
+    <p>Рельеф преимущественно равнинный, с множеством озёр и болот. Наибольшая высота приходится на низменные холмы, а береговая линия отличается дюнами, песчаными пляжами и сосновыми борами. Здесь же проходит Куршская коса — узкая песчаная полоса, которая делит залив и входит в список объектов ЮНЕСКО (её северная часть относится к Литве, южная — к России).</p>
+    <div class="facts">
+      <div class="fact"><strong>~15 100 км²</strong><span>площадь региона</span></div>
+      <div class="fact"><strong>~140 км</strong><span>протяжённость побережья</span></div>
+      <div class="fact"><strong>Калининград</strong><span>административный центр</span></div>
+      <div class="fact"><strong>~1 млн</strong><span>жителей (примерно)</span></div>
+    </div>
+  </section>
+
+  <!-- ===================== РЕСУРСЫ И ЭКОНОМИКА ===================== -->
+  <section id="economy">
+    <h2>Ресурсы и экономика</h2>
+    <div class="cols">
+      <div>
+        <h3>Природные ресурсы</h3>
+        <p>Главное природное богатство региона — янтарь. По разным оценкам, значительная часть мировых запасов этого минерала сосредоточена здесь, а добыча ведётся на месторождениях близ Янтарного. Также распространены торф, строительные пески и глины, а побережье богато природными рекреационными зонами.</p>
+      </div>
+      <div>
+        <h3>Экономика</h3>
+        <p>Экономика опирается на промышленность (машиностроение, автомобилестроение, пищевую и энергетическую отрасли), морские порты, транспорт и логистику. Важную роль играет туризм: курорты Зеленоградска и Светлогорска привлекают отдыхающих круглый год.</p>
+        <p>Регион находится в особом положении из-за географической отдалённости от основной территории страны, поэтому здесь действуют отдельные транспортные и таможенные особенности, а балтийские порты и железнодорожное сообщение имеют стратегическое значение.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== КУЛЬТУРА ===================== -->
+  <section id="culture">
+    <h2>Культура, традиции и религия</h2>
+    <p>История региона накладывает особый отпечаток на его культуру. Здесь до 1945 года существовала Восточная Пруссия, а её столица Кёнигсберг была одним из крупных научных и культурных центров Европы. Современная культура сочетает наследие немецкого, литовского, польского и русского народов, а также традиции переселенцев из разных регионов СССР.</p>
+    <div class="cols">
+      <div>
+        <h3>Традиции и промыслы</h3>
+        <ul>
+          <li>Обработка и изготовление изделий из янтаря — один из самых известных местных промыслов.</li>
+          <li>Рыбная ловля и копчение рыбы, особенно угря и салаки, на побережье.</li>
+          <li>Народные праздники, связанные с морем, летним солнцестоянием и урожаем.</li>
+          <li>Кулинарные традиции: прусские блюда, колбасы и сыры, в том числе тильзитский сыр.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Религия</h3>
+        <p>Жители региона исповедуют православие, а также католицизм и протестантизм (лютеранство). Лютеранская традиция оставила здесь множество кирх и церквей, а католические приходы объединяют польскую и литовскую общину. В регионе также действуют мусульманские общины.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ЛЮДИ ===================== -->
+  <section id="people">
+    <h2>Выдающиеся жители</h2>
+    <ul class="people">
+      <li><strong>Иммануил Кант</strong> (1724–1804) — философ, родился и прожил большую часть жизни в Кёнигсберге, похоронен в кафедральном соборе.</li>
+      <li><strong>Эрнст Теодор Амадей Гофман</strong> (1776–1822) — писатель и композитор, уроженец Кёнигсберга.</li>
+      <li><strong>Давид Гильберт</strong> (1862–1943) — математик, работал в Кёнигсбергском университете.</li>
+      <li><strong>Кэте Кольвиц</strong> (1867–1945) — художница и график, родилась в Кёнигсберге.</li>
+      <li><strong>Пётр Нестеров</strong> (1887–1914) — русский военный лётчик, первый в мире совершил воздушный таран; в 1946 году в его честь назван город, ранее известный как Шталлупёнен.</li>
+    </ul>
+  </section>
+
+  <!-- ===================== МАРШРУТ ===================== -->
+  <section id="route">
+    <h2>Маршрут: «Янтарный путь — от Королевца до Балтики»</h2>
+    <div class="routes-note">
+      Маршрут проходит через одиннадцать точек: от кафедрального собора в Калининграде через курорты и промышленные центры побережья до пограничных городов на востоке региона. Переходы логичны по пути движения: сначала северо-запад вдоль моря, затем юг и восток по старым прусским землям. Нажмите на метку на карте или на название остановки, чтобы увидеть описание.
+    </div>
+
+    <div id="route-map"></div>
+
+    <div class="route-layout">
+      <ol class="stop-list" id="stopList"></ol>
+      <div id="stopDetails"></div>
+    </div>
+  </section>
+
+  <!-- ===================== ССЫЛКИ ===================== -->
+  <section id="links">
+    <h2>Полезные ссылки</h2>
+    <ul>
+      <li><a href="https://gov39.ru" target="_blank" rel="noopener">Официальный сайт правительства Калининградской области</a></li>
+      <li><a href="https://www.wikipedia.org/wiki/Калининградская_область" target="_blank" rel="noopener">Статья о Калининградской области в Википедии</a></li>
+      <li><a href="https://izi.travel/ru" target="_blank" rel="noopener">IZI.Travel — аудиогиды и туристические маршруты</a></li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  Янтарный край · Путеводитель по Калининградской области · Проектная работа
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+  // ---------- Данные остановок маршрута ----------
+  // Фото: photo_1.jpg ... photo_11.jpg — положите их в ту же папку, что и index.html.
+  // Координаты приблизительные: при желании проверьте их по карте OpenStreetMap.
+  const stops = [
+    {
+      id: 1, name: "Кафедральный собор, Калининград", lat: 54.7062, lng: 20.5099, photo: "photo_1.jpg",
+      short: "Бывший Кёнигсбергский собор, могила Канта",
+      text: "Готический храм XIV века на острове Кнайпхоф. Здесь похоронен философ Иммануил Кант. Собор сильно пострадал в 1944–1945 годах и был восстановлен в конце XX — начале XXI века. Сегодня это символ города и один из главных туристических объектов региона."
+    },
+    {
+      id: 2, name: "Зеленоградск", lat: 54.9598, lng: 20.4793, photo: "photo_2.jpg",
+      short: "Курорт на Балтийском побережье",
+      text: "Бывший немецкий курорт Кранц, известный с XIX века. Сосновые леса, песчаные пляжи и минеральные источники привлекают отдыхающих. Зеленоградск — отправная точка для знакомства с Куршской косой и местной природой."
+    },
+    {
+      id: 3, name: "Светлогорск", lat: 54.9430, lng: 20.1545, photo: "photo_3.jpg",
+      short: "Курорт на высоком берегу",
+      text: "Прежний курорт Раушен расположен на высоком берегу моря. Здесь сохранились старинные виллы и гостиницы в стиле модерн, а береговой парк и набережная стали любимым местом прогулок. Светлогорск известен также своей системой оздоровительных санаториев."
+    },
+    {
+      id: 4, name: "Янтарный", lat: 54.8781, lng: 19.9440, photo: "photo_4.jpg",
+      short: "Центр добычи янтаря",
+      text: "Город связан с крупнейшими месторождениями янтаря. Здесь добывают природный янтарь и работают предприятия по его переработке. Посетители могут познакомиться с историей добычи и с тем, как минерал формировался миллионы лет назад."
+    },
+    {
+      id: 5, name: "Балтийск", lat: 54.6495, lng: 19.9018, photo: "photo_5.jpg",
+      short: "Морская крепость и база флота",
+      text: "Бывший Пиллау — один из старейших портов Восточной Пруссии. Сегодня здесь находится база Балтийского флота. Город сохранил фортификационные сооружения и маяк, а его набережная открывает вид на морской канал."
+    },
+    {
+      id: 6, name: "Багратионовск", lat: 54.3863, lng: 20.6337, photo: "photo_6.jpg",
+      short: "Место Восточно-прусской битвы 1807 года",
+      text: "Бывший Прейсиш-Эйлау. В феврале 1807 года здесь состоялось крупное сражение Наполеоновских войн между армией Наполеона и русско-прусскими войсками. Битва была одной из самых кровопролитных того времени. Сегодня город известен как центр сельского хозяйства."
+    },
+    {
+      id: 7, name: "Полесск", lat: 54.8500, lng: 21.0900, photo: "photo_7.jpg",
+      short: "Старинный город Лабиау",
+      text: "Полесск известен под немецким названием Лабиау. Город сохранил историческую застройку и остатки средневековых укреплений. Здесь можно увидеть старые кирпичные дома и познакомиться с историей прусских поселений региона."
+    },
+    {
+      id: 8, name: "Советск", lat: 55.0798, lng: 21.8914, photo: "photo_8.jpg",
+      short: "Тильзит и мир 1807 года",
+      text: "Бывший Тильзит стоит на реке Неман. В 1807 году здесь был подписан Тильзитский мир между Францией и Россией, после которого изменилась карта Европы. Город также связан с производством знаменитого тильзитского сыра, рецепт которого появился именно здесь."
+    },
+    {
+      id: 9, name: "Черняховск", lat: 54.6322, lng: 21.8128, photo: "photo_9.jpg",
+      short: "Бывший Инстербург",
+      text: "Город основан в XIV веке как крепость Тевтонского ордена. Сохранились фрагменты старых укреплений и кирпичные здания XIX века. Во время Второй мировой войны город сильно пострадал, а в послевоенные годы получил имя генерала Ивана Черняховского."
+    },
+    {
+      id: 10, name: "Гусев", lat: 54.5862, lng: 22.1986, photo: "photo_10.jpg",
+      short: "Бывший Гумбиннен",
+      text: "Гусев — город в восточной части области. В 1914 году здесь произошло сражение Первой мировой войны, одно из первых в Восточной Пруссии. Город ценен как памятник эпохи, когда эти земли были частью прусских и германских владений."
+    },
+    {
+      id: 11, name: "Нестеров", lat: 54.6298, lng: 22.5681, photo: "photo_11.jpg",
+      short: "Бывший Шталлупёнен, родина лётчика Нестерова",
+      text: "Город назван в честь русского лётчика Петра Нестерова, совершившего первый в мире воздушный таран в 1914 году. Сражение за Шталлупёнен в августе 1914 года стало одним из первых столкновений на Восточном фронте. Нестеров — завершающая точка маршрута на востоке региона."
+    }
+  ];
+
+  // ---------- Карта ----------
+  const map = L.map("route-map", { scrollWheelZoom: true }).setView([54.75, 20.9], 8);
+
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    referrerPolicy: "strict-origin-when-cross-origin",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+  }).addTo(map);
+
+  // Линия маршрута
+  const routeLine = L.polyline(stops.map(s => [s.lat, s.lng]), {
+    color: "#c9891c", weight: 3, opacity: 0.8, dashArray: "6 6"
+  }).addTo(map);
+
+  const markers = {};
+
+  function popupHtml(s) {
+    return `
+      <div class="popup-title">${s.id}. ${s.name}</div>
+      <img class="popup-img" src="${s.photo}" alt="${s.name}" onerror="this.style.display='none'">
+      <div>${s.short}</div>
+      <a class="popup-link" href="#stop-${s.id}" data-stop="${s.id}">Читать подробнее →</a>
+    `;
+  }
+
+  stops.forEach(s => {
+    const icon = L.divIcon({
+      className: "",
+      html: `<div style="background:#1f4e6b;color:#fff;width:30px;height:30px;line-height:30px;
+              text-align:center;border-radius:50%;border:2px solid #c9891c;font-weight:bold;
+              box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer;">${s.id}</div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+
+    const marker = L.marker([s.lat, s.lng], { icon, title: s.name })
+      .addTo(map)
+      .bindPopup(popupHtml(s));
+
+    marker.on("click", () => highlightStop(s.id, false));
+    markers[s.id] = marker;
+  });
+
+  map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+
+  // ---------- Список остановок и карточки ----------
+  const stopList = document.getElementById("stopList");
+  const stopDetails = document.getElementById("stopDetails");
+
+  stops.forEach(s => {
+    const li = document.createElement("li");
+    li.id = "item-" + s.id;
+    li.innerHTML = `<span class="num">${s.id}</span><span class="name">${s.name}</span>
+                    <span class="sub">${s.short}</span>`;
+    li.addEventListener("click", () => highlightStop(s.id, true));
+    stopList.appendChild(li);
+
+    const card = document.createElement("article");
+    card.className = "stop-detail";
+    card.id = "stop-" + s.id;
+    card.innerHTML = `
+      <div class="stop-card">
+        <div class="photo">
+          <img src="${s.photo}" alt="${s.name}" onerror="this.parentElement.style.display='none'">
+        </div>
+        <div class="body">
+          <div class="meta">Остановка ${s.id} из ${stops.length}</div>
+          <h3>${s.name}</h3>
+          <p>${s.text}</p>
+        </div>
+      </div>`;
+    stopDetails.appendChild(card);
+  });
+
+  function highlightStop(id, panMap) {
+    document.querySelectorAll(".stop-list li").forEach(el => el.classList.remove("active"));
+    const item = document.getElementById("item-" + id);
+    if (item) item.classList.add("active");
+
+    const s = stops.find(x => x.id === id);
+    if (panMap) {
+      map.setView([s.lat, s.lng], 11, { animate: true });
+      markers[id].openPopup();
+    }
+    document.getElementById("stop-" + id).scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Ссылка «Читать подробнее» в попапе прокручивает к карточке
+  map.on("popupopen", e => {
+    const link = e.popup.getElement().querySelector("[data-stop]");
+    if (link) {
+      link.addEventListener("click", ev => {
+        ev.preventDefault();
+        highlightStop(parseInt(link.dataset.stop, 10), false);
+      });
+    }
+  });
+</script>
+</body>
+</html>
